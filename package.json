@@ -1,6 +1,6 @@
 {
   "name": "meteor-ejson",
-  "version": "0.6.2",
+  "version": "0.6.2.1",
   "description": "Extended JSON as seen in Meteor and DDP",
   "main": "ejson.js",
   "scripts": {
@@ -18,7 +18,7 @@
     "ddp"
   ],
   "author": "Naomi Seyfer",
-  "license": "BSD",
+  "license": "MIT",
   "readmeFilename": "README.md",
   "dependencies": {
     "underscore": "~1.4"
