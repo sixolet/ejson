@@ -1,0 +1,29 @@
+{
+  "name": "meteor-ejson",
+  "version": "0.6.2",
+  "description": "Extended JSON as seen in Meteor and DDP",
+  "main": "ejson.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/sixolet/ejson.git"
+  },
+  "keywords": [
+    "JSON",
+    "EJSON",
+    "serialization",
+    "meteor",
+    "ddp"
+  ],
+  "author": "Naomi Seyfer",
+  "license": "MIT",
+  "readmeFilename": "README.md",
+  "gitHead": "495040fa9d101db42d42474c48f03d1d979dbbc2",
+  "dependencies": {
+    "underscore": "~1.4"
+  },
+  "scripts": { "test": "node ejson_test.js" },
+  "devDependencies": { "test": ">=0.0.5" }
+}
