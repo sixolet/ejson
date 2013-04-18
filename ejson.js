@@ -1,6 +1,6 @@
 var EJSON = exports; // Global!
 var customTypes = {};
-
+var _ = require('underscore');
 
 // Base 64 encoding
 

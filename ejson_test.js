@@ -1,5 +1,5 @@
-EJSON = require("./ejson.js");
-_ = require("underscore");
+var EJSON = require("./ejson.js");
+var _ = require("underscore");
 
 var prepareTest = function (test) {
   test.isTrue = test.ok;
