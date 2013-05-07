@@ -1,4 +1,7 @@
-var EJSON = exports; // Global!
+({define:typeof define!="undefined"?define:function(deps, factory){module.exports = factory();}}).
+define(["underscore"], function(_){
+
+var exports = exports || {}, EJSON = exports; // Global!
 var customTypes = {};
 var _ = require('underscore');
 
@@ -443,3 +446,5 @@ EJSON.clone = function (v) {
   });
   return ret;
 };
+return exports;
+});

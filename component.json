@@ -1,0 +1,10 @@
+{
+  "name": "meteor-ejson",
+  "version": "0.6.3",
+  "main": "ejson.js",
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "components"
+  ]
+}
