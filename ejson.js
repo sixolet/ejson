@@ -428,9 +428,13 @@ EJSON.clone = function (v) {
     }
     return ret;
   }
-  // Clone arrays (and turn 'arguments' into an array).
   if (_.isArray(v) || _.isArguments(v)) {
-    return _.map(v, EJSON.clone);
+    // For some reason, _.map doesn't work in this context on Opera (weird test
+    // failures).
+    ret = [];
+    for (i = 0; i < v.length; i++)
+      ret[i] = EJSON.clone(v[i]);
+    return ret;
   }
   // handle general user-defined typed Objects if they have a clone method
   if (typeof v.clone === 'function') {
