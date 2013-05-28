@@ -423,7 +423,7 @@ EJSON.clone = function (v) {
     return new Date(v.getTime());
   if (EJSON.isBinary(v)) {
     ret = EJSON.newBinary(v.length);
-    for (i = 0; i < v.length; i++) {
+    for (var i = 0; i < v.length; i++) {
       ret[i] = v[i];
     }
     return ret;
@@ -447,3 +447,4 @@ EJSON.clone = function (v) {
   });
   return ret;
 };
+
