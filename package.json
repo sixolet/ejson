@@ -1,6 +1,6 @@
 {
   "name": "meteor-ejson",
-  "version": "0.6.3",
+  "version": "0.6.3-1",
   "description": "Extended JSON as seen in Meteor and DDP",
   "main": "ejson.js",
   "scripts": {
