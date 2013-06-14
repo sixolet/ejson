@@ -1,7 +1,7 @@
 ejson
 =====
 
-Extended JSON library; used in DDP/Meteor
+Extended JSON library; used in DDP/[Meteor](http://meteor.com)
 
 
 EJSON is a way of embedding more than the built-in JSON types in JSON.  It

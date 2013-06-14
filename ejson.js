@@ -110,14 +110,14 @@ EJSON._base64Decode = function (str) {
       two = (v & 0x0F) << 4;
       break;
     case 2:
-      if (v > 0) {
+      if (v >= 0) {
         two = two | (v >> 2);
         arr[j++] = two;
         three = (v & 0x03) << 6;
       }
       break;
     case 3:
-      if (v > 0) {
+      if (v >= 0) {
         arr[j++] = three | v;
       }
       break;
@@ -338,7 +338,7 @@ EJSON.parse = function (item) {
 };
 
 EJSON.isBinary = function (obj) {
-  return (typeof Uint8Array !== 'undefined' && obj instanceof Uint8Array) ||
+  return !!(typeof Uint8Array !== 'undefined' && obj instanceof Uint8Array) ||
     (obj && obj.$Uint8ArrayPolyfill);
 };
 
@@ -423,14 +423,18 @@ EJSON.clone = function (v) {
     return new Date(v.getTime());
   if (EJSON.isBinary(v)) {
     ret = EJSON.newBinary(v.length);
-    for (i = 0; i < v.length; i++) {
+    for (var i = 0; i < v.length; i++) {
       ret[i] = v[i];
     }
     return ret;
   }
-  // Clone arrays (and turn 'arguments' into an array).
   if (_.isArray(v) || _.isArguments(v)) {
-    return _.map(v, EJSON.clone);
+    // For some reason, _.map doesn't work in this context on Opera (weird test
+    // failures).
+    ret = [];
+    for (i = 0; i < v.length; i++)
+      ret[i] = EJSON.clone(v[i]);
+    return ret;
   }
   // handle general user-defined typed Objects if they have a clone method
   if (typeof v.clone === 'function') {
@@ -443,3 +447,4 @@ EJSON.clone = function (v) {
   });
   return ret;
 };
+

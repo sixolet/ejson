@@ -121,7 +121,6 @@ exports["test base64 - empty"] = function (test) {
   test.ok(_.isEqual(EJSON._base64Decode(""), EJSON.newBinary(0)));
 };
 
-
 exports["test base64 - wikipedia examples"] = function (test) {
   prepareTest(test);
   var tests = [
@@ -137,4 +136,20 @@ exports["test base64 - wikipedia examples"] = function (test) {
   });
 };
 
+exports["test base64 - non-text examples"] = function (test) {
+  prepareTest(test);
+  var tests = [
+    {array: [0, 0, 0], b64: "AAAA"},
+    {array: [0, 0, 1], b64: "AAAB"}
+  ];
+  _.each(tests, function(t) {
+    test.equal(EJSON._base64Encode(t.array), t.b64);
+    var expectedAsBinary = EJSON.newBinary(t.array.length);
+    _.each(t.array, function (val, i) {
+      expectedAsBinary[i] = val;
+    });
+    test.ok(_.isEqual(EJSON._base64Decode(t.b64), expectedAsBinary));
+  });
+};
+console.log(exports);
 if (module == require.main) require('test').run(exports);
