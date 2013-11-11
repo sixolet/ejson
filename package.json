@@ -1,6 +1,6 @@
 {
   "name": "meteor-ejson",
-  "version": "0.6.3-1",
+  "version": "0.6.6-3",
   "description": "Extended JSON as seen in Meteor and DDP",
   "main": "ejson.js",
   "scripts": {
@@ -21,7 +21,7 @@
   "license": "MIT",
   "readmeFilename": "README.md",
   "dependencies": {
-    "underscore": "~1.4"
+    "underscore": "~1.5.2"
   },
   "devDependencies": {
     "test": ">=0.0.5"
