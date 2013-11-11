@@ -142,6 +142,10 @@ EJSON.addType = function (name, factory) {
   customTypes[name] = factory;
 };
 
+var isInfOrNan = function (obj) {
+  return _.isNaN(obj) || obj === Infinity || obj === -Infinity;
+};
+
 var builtinConverters = [
   { // Date
     matchJSONValue: function (obj) {
@@ -155,6 +159,26 @@ var builtinConverters = [
     },
     fromJSONValue: function (obj) {
       return new Date(obj.$date);
+    }
+  },
+  { // NaN, Inf, -Inf. (These are the only objects with typeof !== 'object'
+    // which we match.)
+    matchJSONValue: function (obj) {
+      return _.has(obj, '$InfNaN') && _.size(obj) === 1;
+    },
+    matchObject: isInfOrNan,
+    toJSONValue: function (obj) {
+      var sign;
+      if (_.isNaN(obj))
+        sign = 0;
+      else if (obj === Infinity)
+        sign = 1;
+      else
+        sign = -1;
+      return {$InfNaN: sign};
+    },
+    fromJSONValue: function (obj) {
+      return obj.$InfNaN/0;
     }
   },
   { // Binary
@@ -225,17 +249,26 @@ EJSON._isCustomType = function (obj) {
 };
 
 
-//for both arrays and objects, in-place modification.
+// for both arrays and objects, in-place modification.
 var adjustTypesToJSONValue =
 EJSON._adjustTypesToJSONValue = function (obj) {
+  // Is it an atom that we need to adjust?
   if (obj === null)
     return null;
   var maybeChanged = toJSONValueHelper(obj);
   if (maybeChanged !== undefined)
     return maybeChanged;
+
+  // Other atoms are unchanged.
+  if (typeof obj !== 'object')
+    return obj;
+
+  // Iterate over array or object structure.
   _.each(obj, function (value, key) {
-    if (typeof value !== 'object' && value !== undefined)
+    if (typeof value !== 'object' && value !== undefined &&
+        !isInfOrNan(value))
       return; // continue
+
     var changed = toJSONValueHelper(value);
     if (changed) {
       obj[key] = changed;
@@ -271,9 +304,10 @@ EJSON.toJSONValue = function (item) {
   return item;
 };
 
-//for both arrays and objects. Tries its best to just
+// for both arrays and objects. Tries its best to just
 // use the object you hand it, but may return something
 // different if the object you hand it itself needs changing.
+//
 var adjustTypesFromJSONValue =
 EJSON._adjustTypesFromJSONValue = function (obj) {
   if (obj === null)
@@ -281,6 +315,11 @@ EJSON._adjustTypesFromJSONValue = function (obj) {
   var maybeChanged = fromJSONValueHelper(obj);
   if (maybeChanged !== obj)
     return maybeChanged;
+
+  // Other atoms are unchanged.
+  if (typeof obj !== 'object')
+    return obj;
+
   _.each(obj, function (value, key) {
     if (typeof value === 'object') {
       var changed = fromJSONValueHelper(value);
@@ -329,24 +368,35 @@ EJSON.fromJSONValue = function (item) {
   }
 };
 
-EJSON.stringify = function (item) {
-  return JSON.stringify(EJSON.toJSONValue(item));
+EJSON.stringify = function (item, options) {
+  var json = EJSON.toJSONValue(item);
+  if (options && (options.canonical || options.indent)) {
+    return EJSON._canonicalStringify(json, options);
+  } else {
+    return JSON.stringify(json);
+  }
 };
 
 EJSON.parse = function (item) {
+  if (typeof item !== 'string')
+    throw new Error("EJSON.parse argument should be a string");
   return EJSON.fromJSONValue(JSON.parse(item));
 };
 
 EJSON.isBinary = function (obj) {
-  return !!(typeof Uint8Array !== 'undefined' && obj instanceof Uint8Array) ||
-    (obj && obj.$Uint8ArrayPolyfill);
+  return !!((typeof Uint8Array !== 'undefined' && obj instanceof Uint8Array) ||
+    (obj && obj.$Uint8ArrayPolyfill));
 };
+
 
 EJSON.equals = function (a, b, options) {
   var i;
   var keyOrderSensitive = !!(options && options.keyOrderSensitive);
   if (a === b)
     return true;
+  if (_.isNaN(a) && _.isNaN(b))
+    return true; // This differs from the IEEE spec for NaN equality, b/c we don't want
+                 // anything ever with a NaN to be poisoned from becoming equal to anything.
   if (!a || !b) // if either one is falsy, they'd have to be === to be equal
     return false;
   if (!(typeof a === 'object' && typeof b === 'object'))
@@ -428,6 +478,7 @@ EJSON.clone = function (v) {
     }
     return ret;
   }
+  // XXX: Use something better than underscore's isArray
   if (_.isArray(v) || _.isArguments(v)) {
     // For some reason, _.map doesn't work in this context on Opera (weird test
     // failures).
@@ -448,3 +499,112 @@ EJSON.clone = function (v) {
   return ret;
 };
 
+function quote(string) {
+  return JSON.stringify(string);
+}
+
+var str = function (key, holder, singleIndent, outerIndent, canonical) {
+
+  // Produce a string from holder[key].
+
+  var i;          // The loop counter.
+  var k;          // The member key.
+  var v;          // The member value.
+  var length;
+  var innerIndent = outerIndent;
+  var partial;
+  var value = holder[key];
+
+  // What happens next depends on the value's type.
+
+  switch (typeof value) {
+  case 'string':
+    return quote(value);
+  case 'number':
+    // JSON numbers must be finite. Encode non-finite numbers as null.
+    return isFinite(value) ? String(value) : 'null';
+  case 'boolean':
+    return String(value);
+  // If the type is 'object', we might be dealing with an object or an array or
+  // null.
+  case 'object':
+    // Due to a specification blunder in ECMAScript, typeof null is 'object',
+    // so watch out for that case.
+    if (!value) {
+      return 'null';
+    }
+    // Make an array to hold the partial results of stringifying this object value.
+    innerIndent = outerIndent + singleIndent;
+    partial = [];
+
+    // Is the value an array?
+    if (_.isArray(value) || _.isArguments(value)) {
+
+      // The value is an array. Stringify every element. Use null as a placeholder
+      // for non-JSON values.
+
+      length = value.length;
+      for (i = 0; i < length; i += 1) {
+        partial[i] = str(i, value, singleIndent, innerIndent, canonical) || 'null';
+      }
+
+      // Join all of the elements together, separated with commas, and wrap them in
+      // brackets.
+
+      if (partial.length === 0) {
+        v = '[]';
+      } else if (innerIndent) {
+        v = '[\n' + innerIndent + partial.join(',\n' + innerIndent) + '\n' + outerIndent + ']';
+      } else {
+        v = '[' + partial.join(',') + ']';
+      }
+      return v;
+    }
+
+
+    // Iterate through all of the keys in the object.
+    var keys = _.keys(value);
+    if (canonical)
+      keys = keys.sort();
+    _.each(keys, function (k) {
+      v = str(k, value, singleIndent, innerIndent, canonical);
+      if (v) {
+        partial.push(quote(k) + (innerIndent ? ': ' : ':') + v);
+      }
+    });
+
+
+    // Join all of the member texts together, separated with commas,
+    // and wrap them in braces.
+
+    if (partial.length === 0) {
+      v = '{}';
+    } else if (innerIndent) {
+      v = '{\n' + innerIndent + partial.join(',\n' + innerIndent) + '\n' + outerIndent + '}';
+    } else {
+      v = '{' + partial.join(',') + '}';
+    }
+    return v;
+  }
+}
+
+// If the JSON object does not yet have a stringify method, give it one.
+
+EJSON._canonicalStringify = function (value, options) {
+  // Make a fake root object containing our value under the key of ''.
+  // Return the result of stringifying the value.
+  options = _.extend({
+    indent: "",
+    canonical: false
+  }, options);
+  if (options.indent === true) {
+    options.indent = "  ";
+  } else if (typeof options.indent === 'number') {
+    var newIndent = "";
+    for (var i = 0; i < options.indent; i++) {
+      newIndent += ' ';
+    }
+    options.indent = newIndent;
+  }
+  return str('', {'': value}, options.indent, "", options.canonical);
+};
